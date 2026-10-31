@@ -6,7 +6,7 @@ use hyper::header::{HeaderName, HeaderValue};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
-use rustproxy_core::{FlowRecord, FlowSummary, RequestModel, SecurityFinding};
+use rustproxy_core::{FlowRecord, FlowSummary, RequestModel, ResponseModel, SecurityFinding};
 use rustproxy_http::HttpClient;
 use rustproxy_intercept::{InterceptDecision, InterceptManager};
 use rustproxy_sitemap::SiteMap;
@@ -28,6 +28,7 @@ pub enum ProxyEvent {
     FlowRecorded(FlowSummary),
     FindingDetected(SecurityFinding),
     RequestIntercepted(RequestModel),
+    ResponseIntercepted(ResponseModel),
 }
 
 #[derive(Debug, Clone)]
@@ -351,7 +352,24 @@ impl ProxyServer {
 
         match upstream_res {
             Ok(response_model) => {
-                flow_record.response = Some(response_model.clone());
+                // Response Intercept Check
+                let final_res = if interceptor.should_intercept_response(&response_model, in_scope).await {
+                    let _ = event_tx.send(ProxyEvent::ResponseIntercepted(response_model.clone()));
+                    let rx = interceptor.queue_response(response_model.clone()).await;
+                    match rx.await {
+                        Ok(InterceptDecision::ForwardModifiedResponse(modified)) => modified,
+                        Ok(InterceptDecision::ForwardOriginal) => response_model,
+                        _ => {
+                            let mut drop_res = hyper::Response::new(Full::new(Bytes::from("Response Dropped by RustProxy")));
+                            *drop_res.status_mut() = hyper::StatusCode::BAD_GATEWAY;
+                            return Ok(drop_res);
+                        }
+                    }
+                } else {
+                    response_model
+                };
+
+                flow_record.response = Some(final_res.clone());
 
                 // Passive Scanning
                 let findings = scanner.scan_flow(&flow_record);
@@ -372,9 +390,9 @@ impl ProxyServer {
 
                 // Build client response
                 let mut builder = hyper::Response::builder()
-                    .status(response_model.status);
+                    .status(final_res.status);
 
-                for (k, v) in &response_model.headers {
+                for (k, v) in &final_res.headers {
                     if let (Ok(hname), Ok(hval)) = (HeaderName::from_str(k), HeaderValue::from_str(v)) {
                         // Skip hop-by-hop headers
                         if !k.eq_ignore_ascii_case("transfer-encoding") {
@@ -384,7 +402,7 @@ impl ProxyServer {
                 }
 
                 let client_res = builder
-                    .body(Full::new(response_model.body))
+                    .body(Full::new(final_res.body))
                     .unwrap_or_else(|_| hyper::Response::new(Full::new(Bytes::new())));
 
                 Ok(client_res)

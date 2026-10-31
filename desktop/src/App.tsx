@@ -14,6 +14,7 @@ import {
   ProxyStats,
   RepeaterTab,
   RequestModel,
+  ResponseModel,
   SecurityFinding,
   SiteMapNode,
 } from './types';
@@ -26,6 +27,7 @@ export const App: React.FC = () => {
   const [findings, setFindings] = useState<SecurityFinding[]>([]);
   const [sitemap, setSitemap] = useState<SiteMapNode[]>([]);
   const [pendingRequests, setPendingRequests] = useState<RequestModel[]>([]);
+  const [pendingResponses, setPendingResponses] = useState<ResponseModel[]>([]);
   const [repeaterTabs, setRepeaterTabs] = useState<RepeaterTab[]>([]);
   const [repeaterInitialReq, setRepeaterInitialReq] = useState<RequestModel | null>(null);
 
@@ -37,7 +39,12 @@ export const App: React.FC = () => {
         api.getFlows({ limit: 500 }).catch(() => []),
         api.getFindings().catch(() => []),
         api.getSitemap().catch(() => []),
-        api.getInterceptStatus().catch(() => ({ enabled: false, pending: [] })),
+        api.getInterceptStatus().catch(() => ({
+          enabled: false,
+          pending: [],
+          pending_requests: [],
+          pending_responses: [],
+        })),
         api.getRepeaterTabs().catch(() => []),
       ]);
 
@@ -45,7 +52,8 @@ export const App: React.FC = () => {
       setFlows(f);
       setFindings(findingsData);
       setSitemap(sm);
-      setPendingRequests(ic.pending);
+      setPendingRequests(ic.pending_requests || ic.pending || []);
+      setPendingResponses(ic.pending_responses || []);
       setRepeaterTabs(repTabs);
     } catch (err) {
       // Backend starting or reconnecting
@@ -86,6 +94,16 @@ export const App: React.FC = () => {
     await refreshAll();
   };
 
+  const handleForwardInterceptResponse = async (id: string, modified?: ResponseModel) => {
+    await api.forwardInterceptResponse(id, modified);
+    await refreshAll();
+  };
+
+  const handleDropInterceptResponse = async (id: string) => {
+    await api.dropInterceptResponse(id);
+    await refreshAll();
+  };
+
   const handleSendToRepeater = (req: RequestModel) => {
     setRepeaterInitialReq(req);
     setActiveTab('repeater');
@@ -119,9 +137,12 @@ export const App: React.FC = () => {
           <ProxyInterceptView
             interceptEnabled={stats?.intercept_enabled ?? false}
             pendingRequests={pendingRequests}
+            pendingResponses={pendingResponses}
             onToggleIntercept={handleToggleIntercept}
             onForward={handleForwardIntercept}
             onDrop={handleDropIntercept}
+            onForwardResponse={handleForwardInterceptResponse}
+            onDropResponse={handleDropInterceptResponse}
             onSendToRepeater={handleSendToRepeater}
           />
         )}

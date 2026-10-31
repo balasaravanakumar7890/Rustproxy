@@ -6,7 +6,7 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
-use rustproxy_core::RequestModel;
+use rustproxy_core::{RequestModel, ResponseModel};
 use rustproxy_storage::FlowFilter;
 use serde_json::json;
 use std::net::SocketAddr;
@@ -43,6 +43,17 @@ pub async fn start_api_server(api: Arc<ApiService>, addr: SocketAddr) -> Result<
     }
 }
 
+fn is_origin_allowed(origin: &str) -> bool {
+    let lower = origin.to_lowercase();
+    lower.starts_with("http://127.0.0.1")
+        || lower.starts_with("https://127.0.0.1")
+        || lower.starts_with("http://localhost")
+        || lower.starts_with("https://localhost")
+        || lower.starts_with("tauri://")
+        || lower.starts_with("http://tauri.localhost")
+        || lower.starts_with("https://tauri.localhost")
+}
+
 async fn handle_api_request(
     req: Request<Incoming>,
     api: Arc<ApiService>,
@@ -52,14 +63,43 @@ async fn handle_api_request(
     let path = uri.path();
     let query_str = uri.query().unwrap_or("");
 
+    // Determine Origin header and validate CORS
+    let origin_header = req.headers().get("origin").and_then(|h| h.to_str().ok());
+    let allowed_origin = match origin_header {
+        Some(orig) if is_origin_allowed(orig) => Some(orig.to_string()),
+        Some(_) => None, // Untrusted origin rejected
+        None => None,    // Direct / non-browser access allowed without CORS headers
+    };
+
     // Handle CORS Preflight
     if method == Method::OPTIONS {
-        return Ok(Response::builder()
+        if origin_header.is_some() && allowed_origin.is_none() {
+            // Reject unauthorized cross-origin requests
+            return Ok(Response::builder()
+                .status(StatusCode::FORBIDDEN)
+                .body(Full::new(Bytes::from("CORS Origin Not Allowed")))
+                .unwrap());
+        }
+
+        let mut builder = Response::builder()
             .status(StatusCode::NO_CONTENT)
-            .header("Access-Control-Allow-Origin", "*")
             .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-            .header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-            .body(Full::new(Bytes::new()))
+            .header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+        if let Some(ref orig) = allowed_origin {
+            builder = builder
+                .header("Access-Control-Allow-Origin", orig)
+                .header("Access-Control-Allow-Credentials", "true");
+        }
+
+        return Ok(builder.body(Full::new(Bytes::new())).unwrap());
+    }
+
+    // Reject untrusted cross-origin requests for state-changing/data API calls
+    if origin_header.is_some() && allowed_origin.is_none() && path.starts_with("/api/") {
+        return Ok(Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .body(Full::new(Bytes::from("CORS Origin Not Allowed")))
             .unwrap());
     }
 
@@ -69,11 +109,13 @@ async fn handle_api_request(
         Err(_) => Bytes::new(),
     };
 
+    let orig_ref = allowed_origin.as_deref();
+
     let res = match (method, path) {
         // Stats
         (Method::GET, "/api/stats") => match api.get_stats().await {
-            Ok(stats) => json_response(StatusCode::OK, &stats),
-            Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+            Ok(stats) => json_response(StatusCode::OK, &stats, orig_ref),
+            Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref),
         },
 
         // Flows List
@@ -96,8 +138,8 @@ async fn handle_api_request(
                 }
             }
             match api.list_flows(&filter) {
-                Ok(flows) => json_response(StatusCode::OK, &flows),
-                Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+                Ok(flows) => json_response(StatusCode::OK, &flows, orig_ref),
+                Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref),
             }
         }
 
@@ -113,29 +155,33 @@ async fn handle_api_request(
                         "request_body_str": req_body_str,
                         "response_body_str": res_body_str,
                     });
-                    json_response(StatusCode::OK, &val)
+                    json_response(StatusCode::OK, &val, orig_ref)
                 }
-                Ok(None) => error_response(StatusCode::NOT_FOUND, "Flow not found"),
-                Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+                Ok(None) => error_response(StatusCode::NOT_FOUND, "Flow not found", orig_ref),
+                Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref),
             }
         }
 
         // Clear Flows
         (Method::POST, "/api/flows/clear") => match api.clear_history() {
-            Ok(_) => json_response(StatusCode::OK, &json!({ "success": true })),
-            Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+            Ok(_) => json_response(StatusCode::OK, &json!({ "success": true }), orig_ref),
+            Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref),
         },
 
         // Intercept Status & Pending
         (Method::GET, "/api/intercept") => {
             let enabled = api.is_intercept_enabled();
-            let pending = api.get_pending_intercepts().await;
+            let pending_requests = api.get_pending_intercepts().await;
+            let pending_responses = api.get_pending_response_intercepts().await;
             json_response(
                 StatusCode::OK,
                 &json!({
                     "enabled": enabled,
-                    "pending": pending,
+                    "pending": pending_requests,
+                    "pending_requests": pending_requests,
+                    "pending_responses": pending_responses,
                 }),
+                orig_ref,
             )
         }
 
@@ -144,13 +190,13 @@ async fn handle_api_request(
             if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
                 let enabled = val.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
                 api.set_intercept_enabled(enabled);
-                json_response(StatusCode::OK, &json!({ "enabled": enabled }))
+                json_response(StatusCode::OK, &json!({ "enabled": enabled }), orig_ref)
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid JSON")
+                error_response(StatusCode::BAD_REQUEST, "Invalid JSON", orig_ref)
             }
         }
 
-        // Forward Intercepted
+        // Forward Intercepted Request
         (Method::POST, "/api/intercept/forward") => {
             #[derive(serde::Deserialize)]
             struct ForwardPayload {
@@ -159,13 +205,13 @@ async fn handle_api_request(
             }
             if let Ok(payload) = serde_json::from_slice::<ForwardPayload>(&body_bytes) {
                 let success = api.forward_intercepted(&payload.id, payload.modified).await;
-                json_response(StatusCode::OK, &json!({ "success": success }))
+                json_response(StatusCode::OK, &json!({ "success": success }), orig_ref)
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid forward payload")
+                error_response(StatusCode::BAD_REQUEST, "Invalid forward payload", orig_ref)
             }
         }
 
-        // Drop Intercepted
+        // Drop Intercepted Request
         (Method::POST, "/api/intercept/drop") => {
             #[derive(serde::Deserialize)]
             struct DropPayload {
@@ -173,16 +219,45 @@ async fn handle_api_request(
             }
             if let Ok(payload) = serde_json::from_slice::<DropPayload>(&body_bytes) {
                 let success = api.drop_intercepted(&payload.id).await;
-                json_response(StatusCode::OK, &json!({ "success": success }))
+                json_response(StatusCode::OK, &json!({ "success": success }), orig_ref)
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid drop payload")
+                error_response(StatusCode::BAD_REQUEST, "Invalid drop payload", orig_ref)
+            }
+        }
+
+        // Forward Intercepted Response
+        (Method::POST, "/api/intercept/forward_response") => {
+            #[derive(serde::Deserialize)]
+            struct ForwardResponsePayload {
+                id: String,
+                modified: Option<ResponseModel>,
+            }
+            if let Ok(payload) = serde_json::from_slice::<ForwardResponsePayload>(&body_bytes) {
+                let success = api.forward_intercepted_response(&payload.id, payload.modified).await;
+                json_response(StatusCode::OK, &json!({ "success": success }), orig_ref)
+            } else {
+                error_response(StatusCode::BAD_REQUEST, "Invalid forward response payload", orig_ref)
+            }
+        }
+
+        // Drop Intercepted Response
+        (Method::POST, "/api/intercept/drop_response") => {
+            #[derive(serde::Deserialize)]
+            struct DropResponsePayload {
+                id: String,
+            }
+            if let Ok(payload) = serde_json::from_slice::<DropResponsePayload>(&body_bytes) {
+                let success = api.drop_intercepted_response(&payload.id).await;
+                json_response(StatusCode::OK, &json!({ "success": success }), orig_ref)
+            } else {
+                error_response(StatusCode::BAD_REQUEST, "Invalid drop response payload", orig_ref)
             }
         }
 
         // Repeater: List Tabs
         (Method::GET, "/api/repeater/tabs") => {
             let tabs = api.list_repeater_tabs().await;
-            json_response(StatusCode::OK, &tabs)
+            json_response(StatusCode::OK, &tabs, orig_ref)
         }
 
         // Repeater: Create Tab
@@ -197,7 +272,22 @@ async fn handle_api_request(
                 request: None,
             });
             let tab_id = api.create_repeater_tab(payload.name, payload.request).await;
-            json_response(StatusCode::CREATED, &json!({ "tab_id": tab_id }))
+            json_response(StatusCode::CREATED, &json!({ "tab_id": tab_id }), orig_ref)
+        }
+
+        // Repeater: Update Tab
+        (Method::PUT, p) if p.starts_with("/api/repeater/tabs/") => {
+            let tab_id = &p["/api/repeater/tabs/".len()..];
+            #[derive(serde::Deserialize)]
+            struct UpdateTabPayload {
+                request: RequestModel,
+            }
+            if let Ok(payload) = serde_json::from_slice::<UpdateTabPayload>(&body_bytes) {
+                let success = api.update_repeater_tab(tab_id, payload.request).await;
+                json_response(StatusCode::OK, &json!({ "success": success }), orig_ref)
+            } else {
+                error_response(StatusCode::BAD_REQUEST, "Invalid update tab payload", orig_ref)
+            }
         }
 
         // Repeater: Duplicate Tab
@@ -205,8 +295,8 @@ async fn handle_api_request(
             let prefix = "/api/repeater/tabs/";
             let tab_id = &p[prefix.len()..p.len() - "/duplicate".len()];
             match api.duplicate_repeater_tab(tab_id).await {
-                Some(new_id) => json_response(StatusCode::OK, &json!({ "tab_id": new_id })),
-                None => error_response(StatusCode::NOT_FOUND, "Tab not found"),
+                Some(new_id) => json_response(StatusCode::OK, &json!({ "tab_id": new_id }), orig_ref),
+                None => error_response(StatusCode::NOT_FOUND, "Tab not found", orig_ref),
             }
         }
 
@@ -214,13 +304,22 @@ async fn handle_api_request(
         (Method::DELETE, p) if p.starts_with("/api/repeater/tabs/") => {
             let tab_id = &p["/api/repeater/tabs/".len()..];
             api.close_repeater_tab(tab_id).await;
-            json_response(StatusCode::OK, &json!({ "success": true }))
+            json_response(StatusCode::OK, &json!({ "success": true }), orig_ref)
         }
 
         // Repeater: Send Request
         (Method::POST, p) if p.starts_with("/api/repeater/tabs/") && p.ends_with("/send") => {
             let prefix = "/api/repeater/tabs/";
             let tab_id = &p[prefix.len()..p.len() - "/send".len()];
+            #[derive(serde::Deserialize)]
+            struct SendTabPayload {
+                request: Option<RequestModel>,
+            }
+            if let Ok(payload) = serde_json::from_slice::<SendTabPayload>(&body_bytes) {
+                if let Some(req) = payload.request {
+                    api.update_repeater_tab(tab_id, req).await;
+                }
+            }
             match api.send_repeater_tab(tab_id).await {
                 Ok(res) => {
                     let body_str = res.body_as_string_lossy();
@@ -230,22 +329,23 @@ async fn handle_api_request(
                             "response": res,
                             "body_str": body_str,
                         }),
+                        orig_ref,
                     )
                 }
-                Err(e) => error_response(StatusCode::BAD_GATEWAY, &format!("Request failed: {:?}", e)),
+                Err(e) => error_response(StatusCode::BAD_GATEWAY, &format!("Request failed: {:?}", e), orig_ref),
             }
         }
 
         // Sitemap
         (Method::GET, "/api/sitemap") => {
             let sitemap = api.get_sitemap().await;
-            json_response(StatusCode::OK, &sitemap)
+            json_response(StatusCode::OK, &sitemap, orig_ref)
         }
 
         // Scanner Findings
         (Method::GET, "/api/findings") => match api.list_findings() {
-            Ok(findings) => json_response(StatusCode::OK, &findings),
-            Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+            Ok(findings) => json_response(StatusCode::OK, &findings, orig_ref),
+            Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref),
         },
 
         // Decoder: Encode
@@ -257,11 +357,11 @@ async fn handle_api_request(
             }
             if let Ok(p) = serde_json::from_slice::<CodecPayload>(&body_bytes) {
                 match api.encode(&p.text, &p.format) {
-                    Ok(result) => json_response(StatusCode::OK, &json!({ "result": result })),
-                    Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
+                    Ok(result) => json_response(StatusCode::OK, &json!({ "result": result }), orig_ref),
+                    Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string(), orig_ref),
                 }
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid codec payload")
+                error_response(StatusCode::BAD_REQUEST, "Invalid codec payload", orig_ref)
             }
         }
 
@@ -274,11 +374,11 @@ async fn handle_api_request(
             }
             if let Ok(p) = serde_json::from_slice::<CodecPayload>(&body_bytes) {
                 match api.decode(&p.text, &p.format) {
-                    Ok(result) => json_response(StatusCode::OK, &json!({ "result": result })),
-                    Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
+                    Ok(result) => json_response(StatusCode::OK, &json!({ "result": result }), orig_ref),
+                    Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string(), orig_ref),
                 }
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid codec payload")
+                error_response(StatusCode::BAD_REQUEST, "Invalid codec payload", orig_ref)
             }
         }
 
@@ -291,9 +391,9 @@ async fn handle_api_request(
             }
             if let Ok(p) = serde_json::from_slice::<DiffPayload>(&body_bytes) {
                 let diff_res = api.diff(&p.old, &p.new);
-                json_response(StatusCode::OK, &diff_res)
+                json_response(StatusCode::OK, &diff_res, orig_ref)
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid diff payload")
+                error_response(StatusCode::BAD_REQUEST, "Invalid diff payload", orig_ref)
             }
         }
 
@@ -334,41 +434,62 @@ async fn handle_api_request(
                     "text/html; charset=utf-8"
                 };
 
-                Response::builder()
+                let mut builder = Response::builder()
                     .status(StatusCode::OK)
-                    .header("Content-Type", mime)
-                    .header("Access-Control-Allow-Origin", "*")
-                    .body(Full::new(Bytes::from(content)))
-                    .unwrap()
+                    .header("Content-Type", mime);
+
+                if let Some(orig) = orig_ref {
+                    builder = builder.header("Access-Control-Allow-Origin", orig);
+                }
+
+                builder.body(Full::new(Bytes::from(content))).unwrap()
             } else {
-                error_response(StatusCode::NOT_FOUND, "Not Found")
+                error_response(StatusCode::NOT_FOUND, "Not Found", orig_ref)
             }
         }
 
         // Default 404
-        _ => error_response(StatusCode::NOT_FOUND, "Endpoint not found"),
+        _ => error_response(StatusCode::NOT_FOUND, "Endpoint not found", orig_ref),
     };
 
     Ok(res)
 }
 
-fn json_response<T: serde::Serialize>(status: StatusCode, data: &T) -> Response<Full<Bytes>> {
+fn json_response<T: serde::Serialize>(
+    status: StatusCode,
+    data: &T,
+    origin: Option<&str>,
+) -> Response<Full<Bytes>> {
     let json_bytes = serde_json::to_vec(data).unwrap_or_default();
-    Response::builder()
+    let mut builder = Response::builder()
         .status(status)
-        .header("Content-Type", "application/json")
-        .header("Access-Control-Allow-Origin", "*")
-        .body(Full::new(Bytes::from(json_bytes)))
-        .unwrap()
+        .header("Content-Type", "application/json");
+
+    if let Some(orig) = origin {
+        builder = builder
+            .header("Access-Control-Allow-Origin", orig)
+            .header("Access-Control-Allow-Credentials", "true");
+    }
+
+    builder.body(Full::new(Bytes::from(json_bytes))).unwrap()
 }
 
-fn error_response(status: StatusCode, msg: &str) -> Response<Full<Bytes>> {
+fn error_response(
+    status: StatusCode,
+    msg: &str,
+    origin: Option<&str>,
+) -> Response<Full<Bytes>> {
     let err_json = json!({ "error": msg });
     let bytes = serde_json::to_vec(&err_json).unwrap_or_default();
-    Response::builder()
+    let mut builder = Response::builder()
         .status(status)
-        .header("Content-Type", "application/json")
-        .header("Access-Control-Allow-Origin", "*")
-        .body(Full::new(Bytes::from(bytes)))
-        .unwrap()
+        .header("Content-Type", "application/json");
+
+    if let Some(orig) = origin {
+        builder = builder
+            .header("Access-Control-Allow-Origin", orig)
+            .header("Access-Control-Allow-Credentials", "true");
+    }
+
+    builder.body(Full::new(Bytes::from(bytes))).unwrap()
 }

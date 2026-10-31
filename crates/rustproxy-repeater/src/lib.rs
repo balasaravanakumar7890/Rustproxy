@@ -97,6 +97,15 @@ impl RepeaterEngine {
         self.tabs.get_mut(tab_id)
     }
 
+    pub fn update_tab_request(&mut self, tab_id: &str, req: RequestModel) -> bool {
+        if let Some(tab) = self.tabs.get_mut(tab_id) {
+            tab.request = req;
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn list_tabs(&self) -> Vec<RepeaterTab> {
         self.tab_order
             .iter()

@@ -77,6 +77,28 @@ impl InterceptRule {
         }
         true
     }
+
+    pub fn new_response_rule(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            enabled: true,
+            target: InterceptTarget::Response,
+            method: None,
+            url_pattern: None,
+            in_scope_only: false,
+            url_regex: None,
+        }
+    }
+
+    pub fn matches_response(&mut self, _res: &ResponseModel, in_scope: bool) -> bool {
+        if !self.enabled {
+            return false;
+        }
+        if self.in_scope_only && !in_scope {
+            return false;
+        }
+        true
+    }
 }
 
 pub struct InterceptManager {
@@ -121,6 +143,21 @@ impl InterceptManager {
         for rule in rules.iter_mut() {
             if let InterceptTarget::Request = rule.target {
                 if rule.matches_request(req, in_scope) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub async fn should_intercept_response(&self, res: &ResponseModel, in_scope: bool) -> bool {
+        if !self.is_enabled() {
+            return false;
+        }
+        let mut rules = self.rules.write().await;
+        for rule in rules.iter_mut() {
+            if let InterceptTarget::Response = rule.target {
+                if rule.matches_response(res, in_scope) {
                     return true;
                 }
             }
@@ -192,6 +229,11 @@ impl InterceptManager {
 
     pub async fn get_pending_request_list(&self) -> Vec<RequestModel> {
         let pending = self.pending_requests.read().await;
+        pending.values().map(|(r, _)| r.clone()).collect()
+    }
+
+    pub async fn get_pending_response_list(&self) -> Vec<ResponseModel> {
+        let pending = self.pending_responses.read().await;
         pending.values().map(|(r, _)| r.clone()).collect()
     }
 }

@@ -45,6 +45,13 @@ async fn main() -> Result<()> {
     fs::write(&ca_cert_path, &ca.ca_cert_pem)?;
     fs::write(&ca_key_path, &ca.ca_key_pem)?;
 
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&ca_dir, fs::Permissions::from_mode(0o700));
+        let _ = fs::set_permissions(&ca_key_path, fs::Permissions::from_mode(0o600));
+    }
+
     println!("  [+] Generated Root CA Certificate: {}", ca_cert_path.display());
     println!("  [!] Install this certificate in your browser/system to inspect HTTPS traffic without warnings.");
     println!();
@@ -122,8 +129,14 @@ async fn main() -> Result<()> {
                 }
                 ProxyEvent::RequestIntercepted(req) => {
                     println!(
-                        "  [PAUSE] Intercepted {} {} -> Awaiting operator decision",
+                        "  [PAUSE] Intercepted Request {} {} -> Awaiting operator decision",
                         req.method, req.uri
+                    );
+                }
+                ProxyEvent::ResponseIntercepted(res) => {
+                    println!(
+                        "  [PAUSE] Intercepted Response status {} ({} bytes) -> Awaiting operator decision",
+                        res.status, res.body.len()
                     );
                 }
             }

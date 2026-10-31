@@ -16,7 +16,11 @@ pub struct RequestModel {
     pub uri: String,
     pub version: String,
     pub headers: Vec<(String, String)>,
-    #[serde(skip)]
+    #[serde(
+        default,
+        serialize_with = "serialize_bytes_string_lossy",
+        deserialize_with = "deserialize_bytes_from_string"
+    )]
     pub body: Bytes,
     pub host: String,
     pub port: u16,
@@ -154,7 +158,11 @@ pub struct ResponseModel {
     pub status_text: String,
     pub version: String,
     pub headers: Vec<(String, String)>,
-    #[serde(skip)]
+    #[serde(
+        default,
+        serialize_with = "serialize_bytes_string_lossy",
+        deserialize_with = "deserialize_bytes_from_string"
+    )]
     pub body: Bytes,
     pub body_length: usize,
     pub mime_type: Option<String>,
@@ -232,4 +240,19 @@ impl ResponseModel {
         wire.extend_from_slice(&self.body);
         wire
     }
+}
+
+pub fn serialize_bytes_string_lossy<S>(bytes: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&String::from_utf8_lossy(bytes))
+}
+
+pub fn deserialize_bytes_from_string<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let opt: Option<String> = serde::Deserialize::deserialize(deserializer)?;
+    Ok(opt.map(|s| Bytes::from(s.into_bytes())).unwrap_or_else(Bytes::new))
 }

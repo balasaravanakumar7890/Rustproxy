@@ -41,6 +41,7 @@ export interface ResponseModel {
   body_length: number;
   mime_type?: string;
   duration_ms: number;
+  body?: string;
 }
 
 export interface FlowDetail {

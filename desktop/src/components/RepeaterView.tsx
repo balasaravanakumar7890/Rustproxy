@@ -94,7 +94,43 @@ export const RepeaterView: React.FC<RepeaterViewProps> = ({
     setIsLoading(true);
 
     try {
-      const res = await api.sendRepeaterTab(activeTabId);
+      const parsedHeaders: [string, string][] = headersText
+        .split('\n')
+        .filter((l) => l.trim().length > 0 && l.includes(':'))
+        .map((l) => {
+          const idx = l.indexOf(':');
+          return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()];
+        });
+
+      let parsedUrl: URL | null = null;
+      try {
+        parsedUrl = new URL(url);
+      } catch {
+        // fallback if relative or missing scheme
+      }
+
+      const reqPayload: RequestModel = {
+        id: activeTabId,
+        method,
+        uri: url,
+        version: currentTab?.request.version ?? 'HTTP/1.1',
+        headers: parsedHeaders,
+        host: parsedUrl?.hostname ?? currentTab?.request.host ?? 'localhost',
+        port: parsedUrl?.port
+          ? parseInt(parsedUrl.port, 10)
+          : parsedUrl?.protocol === 'https:'
+          ? 443
+          : 80,
+        scheme: parsedUrl?.protocol
+          ? parsedUrl.protocol.replace(':', '')
+          : currentTab?.request.scheme ?? 'http',
+        path: parsedUrl ? (parsedUrl.pathname || '/') : currentTab?.request.path ?? '/',
+        query: parsedUrl?.search ? parsedUrl.search.replace(/^\?/, '') : undefined,
+        body_length: bodyText.length,
+        body: bodyText,
+      };
+
+      const res = await api.sendRepeaterTab(activeTabId, reqPayload);
       setActiveResponse(res.response);
       setResponseBodyStr(res.body_str);
       await onRefreshTabs();

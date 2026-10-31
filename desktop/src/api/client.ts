@@ -65,8 +65,18 @@ export const api = {
   },
 
   // Intercept
-  async getInterceptStatus(): Promise<{ enabled: boolean; pending: RequestModel[] }> {
-    return fetchJson<{ enabled: boolean; pending: RequestModel[] }>('/api/intercept');
+  async getInterceptStatus(): Promise<{
+    enabled: boolean;
+    pending: RequestModel[];
+    pending_requests: RequestModel[];
+    pending_responses: ResponseModel[];
+  }> {
+    return fetchJson<{
+      enabled: boolean;
+      pending: RequestModel[];
+      pending_requests: RequestModel[];
+      pending_responses: ResponseModel[];
+    }>('/api/intercept');
   },
 
   async toggleIntercept(enabled: boolean): Promise<void> {
@@ -92,6 +102,22 @@ export const api = {
     return res.success;
   },
 
+  async forwardInterceptResponse(id: string, modified?: ResponseModel): Promise<boolean> {
+    const res = await fetchJson<{ success: boolean }>('/api/intercept/forward_response', {
+      method: 'POST',
+      body: JSON.stringify({ id, modified }),
+    });
+    return res.success;
+  },
+
+  async dropInterceptResponse(id: string): Promise<boolean> {
+    const res = await fetchJson<{ success: boolean }>('/api/intercept/drop_response', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    });
+    return res.success;
+  },
+
   // Repeater
   async getRepeaterTabs(): Promise<RepeaterTab[]> {
     return fetchJson<RepeaterTab[]>('/api/repeater/tabs');
@@ -102,6 +128,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ name, request }),
     });
+  },
+
+  async updateRepeaterTab(id: string, request: RequestModel): Promise<boolean> {
+    const res = await fetchJson<{ success: boolean }>(`/api/repeater/tabs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ request }),
+    });
+    return res.success;
   },
 
   async duplicateRepeaterTab(id: string): Promise<{ tab_id: string }> {
@@ -116,9 +150,10 @@ export const api = {
     });
   },
 
-  async sendRepeaterTab(id: string): Promise<{ response: ResponseModel; body_str: string }> {
+  async sendRepeaterTab(id: string, request?: RequestModel): Promise<{ response: ResponseModel; body_str: string }> {
     return fetchJson<{ response: ResponseModel; body_str: string }>(`/api/repeater/tabs/${id}/send`, {
       method: 'POST',
+      body: JSON.stringify({ request }),
     });
   },
 

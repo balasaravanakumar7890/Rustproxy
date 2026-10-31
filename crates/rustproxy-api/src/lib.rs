@@ -78,12 +78,24 @@ impl ApiService {
         self.interceptor.get_pending_request_list().await
     }
 
+    pub async fn get_pending_response_intercepts(&self) -> Vec<ResponseModel> {
+        self.interceptor.get_pending_response_list().await
+    }
+
     pub async fn forward_intercepted(&self, id: &str, modified: Option<RequestModel>) -> bool {
         self.interceptor.forward_request(id, modified).await
     }
 
     pub async fn drop_intercepted(&self, id: &str) -> bool {
         self.interceptor.drop_request(id).await
+    }
+
+    pub async fn forward_intercepted_response(&self, id: &str, modified: Option<ResponseModel>) -> bool {
+        self.interceptor.forward_response(id, modified).await
+    }
+
+    pub async fn drop_intercepted_response(&self, id: &str) -> bool {
+        self.interceptor.drop_response(id).await
     }
 
     // History
@@ -108,6 +120,11 @@ impl ApiService {
     pub async fn create_repeater_tab(&self, name: Option<String>, req: Option<RequestModel>) -> String {
         let mut rep = self.repeater.write().await;
         rep.create_tab(name, req)
+    }
+
+    pub async fn update_repeater_tab(&self, id: &str, req: RequestModel) -> bool {
+        let mut rep = self.repeater.write().await;
+        rep.update_tab_request(id, req)
     }
 
     pub async fn duplicate_repeater_tab(&self, id: &str) -> Option<String> {
