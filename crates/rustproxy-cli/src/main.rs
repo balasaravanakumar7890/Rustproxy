@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
     let scanner = Arc::new(rustproxy_scanner::ScannerEngine::new());
 
     let client = Arc::new(rustproxy_http::HttpClient::new_insecure()?);
-    let _repeater = Arc::new(RwLock::new(RepeaterEngine::new(client)));
+    let repeater = Arc::new(RwLock::new(RepeaterEngine::new(client)));
 
     let bind_addr: SocketAddr = "127.0.0.1:8080".parse()?;
     let config = ProxyConfig {
@@ -74,6 +74,23 @@ async fn main() -> Result<()> {
         sitemap.clone(),
         scanner.clone(),
     )?;
+
+    let api_service = Arc::new(rustproxy_api::ApiService::new(
+        storage.clone(),
+        interceptor.clone(),
+        repeater.clone(),
+        sitemap.clone(),
+        scanner.clone(),
+        proxy.event_sender(),
+    ));
+
+    let api_addr: SocketAddr = "127.0.0.1:8081".parse()?;
+    let api_runner = api_service.clone();
+    tokio::spawn(async move {
+        if let Err(e) = rustproxy_api::start_api_server(api_runner, api_addr).await {
+            tracing::error!("API server error: {:?}", e);
+        }
+    });
 
     let mut event_rx = proxy.subscribe_events();
 
@@ -114,6 +131,7 @@ async fn main() -> Result<()> {
     });
 
     println!("  [*] Proxy listening on http://{}", bind_addr);
+    println!("  [*] Desktop/Web API listening on http://{}", api_addr);
     println!("  [*] Configure client proxy settings to http://{}", bind_addr);
     println!("  [*] Press Ctrl+C to stop.");
     println!();

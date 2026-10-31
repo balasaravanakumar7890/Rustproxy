@@ -7,3 +7,6 @@
 *.pem
 *.crt
 *.key
+node_modules/
+desktop/node_modules/
+desktop/src-tauri/target/

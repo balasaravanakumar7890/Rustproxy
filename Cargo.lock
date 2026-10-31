@@ -995,6 +995,10 @@ name = "rustproxy-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
  "rustproxy-comparer",
  "rustproxy-core",
  "rustproxy-decoder",
@@ -1009,6 +1013,8 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "url",
+ "urlencoding",
 ]
 
 [[package]]

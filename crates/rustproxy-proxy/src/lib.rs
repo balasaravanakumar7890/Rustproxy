@@ -88,6 +88,10 @@ impl ProxyServer {
         self.event_tx.subscribe()
     }
 
+    pub fn event_sender(&self) -> broadcast::Sender<ProxyEvent> {
+        self.event_tx.clone()
+    }
+
     pub async fn run(&self) -> Result<()> {
         let listener = TcpListener::bind(self.config.bind_addr).await?;
         info!("RustProxy listening on http://{}", self.config.bind_addr);

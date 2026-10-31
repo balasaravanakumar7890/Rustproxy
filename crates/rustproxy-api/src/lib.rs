@@ -1,3 +1,6 @@
+pub mod server;
+
+pub use server::start_api_server;
 use anyhow::Result;
 use rustproxy_comparer::{Comparer, DiffResult};
 use rustproxy_core::{FlowRecord, FlowSummary, RequestModel, ResponseModel, SecurityFinding};

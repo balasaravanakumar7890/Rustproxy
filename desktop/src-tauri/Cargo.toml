@@ -1,0 +1,29 @@
+[package]
+name = "rustproxy-desktop"
+version = "0.1.0"
+description = "RustProxy Desktop Application"
+authors = ["RustProxy Authors"]
+edition = "2021"
+
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.2", features = [] }
+rustproxy-core = { path = "../../crates/rustproxy-core" }
+rustproxy-proxy = { path = "../../crates/rustproxy-proxy" }
+rustproxy-api = { path = "../../crates/rustproxy-api" }
+rustproxy-tls = { path = "../../crates/rustproxy-tls" }
+rustproxy-storage = { path = "../../crates/rustproxy-storage" }
+rustproxy-intercept = { path = "../../crates/rustproxy-intercept" }
+rustproxy-repeater = { path = "../../crates/rustproxy-repeater" }
+rustproxy-sitemap = { path = "../../crates/rustproxy-sitemap" }
+rustproxy-scanner = { path = "../../crates/rustproxy-scanner" }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
