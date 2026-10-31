@@ -1,0 +1,15 @@
+[package]
+name = "rustproxy-intercept"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+rustproxy-core = { workspace = true }
+bytes = { workspace = true }
+tokio = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }

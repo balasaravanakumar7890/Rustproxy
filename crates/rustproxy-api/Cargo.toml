@@ -1,0 +1,23 @@
+[package]
+name = "rustproxy-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+rustproxy-core = { workspace = true }
+rustproxy-http = { workspace = true }
+rustproxy-proxy = { workspace = true }
+rustproxy-intercept = { workspace = true }
+rustproxy-storage = { workspace = true }
+rustproxy-repeater = { workspace = true }
+rustproxy-decoder = { workspace = true }
+rustproxy-comparer = { workspace = true }
+rustproxy-sitemap = { workspace = true }
+rustproxy-scanner = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }

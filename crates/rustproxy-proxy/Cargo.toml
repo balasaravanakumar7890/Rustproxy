@@ -1,0 +1,29 @@
+[package]
+name = "rustproxy-proxy"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+rustproxy-core = { workspace = true }
+rustproxy-tls = { workspace = true }
+rustproxy-http = { workspace = true }
+rustproxy-storage = { workspace = true }
+rustproxy-intercept = { workspace = true }
+rustproxy-sitemap = { workspace = true }
+rustproxy-scanner = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+hyper = { workspace = true }
+hyper-util = { workspace = true }
+http-body-util = { workspace = true }
+bytes = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+url = { workspace = true }
+tokio-rustls = { workspace = true }
+rustls = { workspace = true }
+rustls-pki-types = { workspace = true }

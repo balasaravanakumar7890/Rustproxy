@@ -1,0 +1,68 @@
+[workspace]
+members = [
+    "crates/rustproxy-core",
+    "crates/rustproxy-tls",
+    "crates/rustproxy-storage",
+    "crates/rustproxy-http",
+    "crates/rustproxy-intercept",
+    "crates/rustproxy-sitemap",
+    "crates/rustproxy-repeater",
+    "crates/rustproxy-scanner",
+    "crates/rustproxy-decoder",
+    "crates/rustproxy-comparer",
+    "crates/rustproxy-proxy",
+    "crates/rustproxy-api",
+    "crates/rustproxy-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["RustProxy Authors"]
+license = "Apache-2.0"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+bytes = "1"
+http = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+rustls = { version = "0.23", features = ["ring"] }
+tokio-rustls = "0.26"
+rustls-pki-types = "1"
+webpki-roots = "0.26"
+rcgen = "0.13"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+thiserror = "2.0"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+dashmap = "6"
+regex = "1"
+url = "2"
+urlencoding = "2.1"
+base64 = "0.22"
+hex = "0.4"
+html-escape = "0.2"
+flate2 = "1"
+similar = { version = "2.6", features = ["bytes", "inline"] }
+
+# Internal workspace dependencies
+rustproxy-core = { path = "crates/rustproxy-core" }
+rustproxy-tls = { path = "crates/rustproxy-tls" }
+rustproxy-storage = { path = "crates/rustproxy-storage" }
+rustproxy-http = { path = "crates/rustproxy-http" }
+rustproxy-intercept = { path = "crates/rustproxy-intercept" }
+rustproxy-sitemap = { path = "crates/rustproxy-sitemap" }
+rustproxy-repeater = { path = "crates/rustproxy-repeater" }
+rustproxy-scanner = { path = "crates/rustproxy-scanner" }
+rustproxy-decoder = { path = "crates/rustproxy-decoder" }
+rustproxy-comparer = { path = "crates/rustproxy-comparer" }
+rustproxy-proxy = { path = "crates/rustproxy-proxy" }
+rustproxy-api = { path = "crates/rustproxy-api" }

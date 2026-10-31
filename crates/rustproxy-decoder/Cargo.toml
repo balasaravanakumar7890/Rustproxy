@@ -1,0 +1,18 @@
+[package]
+name = "rustproxy-decoder"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+rustproxy-core = { workspace = true }
+base64 = { workspace = true }
+urlencoding = { workspace = true }
+hex = { workspace = true }
+html-escape = { workspace = true }
+flate2 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
