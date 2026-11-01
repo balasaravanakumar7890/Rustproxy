@@ -1,10 +1,10 @@
 use anyhow::Result;
+use rustls::pki_types::ServerName;
 use rustproxy_intercept::InterceptManager;
 use rustproxy_proxy::{ProxyConfig, ProxyServer};
 use rustproxy_sitemap::SiteMap;
 use rustproxy_storage::{FlowFilter, StorageEngine};
 use rustproxy_tls::{create_mitm_server_config, CertificateAuthority};
-use rustls::pki_types::ServerName;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

@@ -459,7 +459,8 @@ impl StorageEngine {
                 .unwrap_or_default()
                 .with_timezone(&Utc);
 
-            let mut f = SecurityFinding::new(id, flow_id, title, description, severity, confidence, url);
+            let mut f =
+                SecurityFinding::new(id, flow_id, title, description, severity, confidence, url);
             f.cwe_id = cwe_id;
             f.remediation = remediation;
             f.evidence = evidence;
@@ -497,12 +498,27 @@ mod tests {
 
         let headers = vec![("Content-Type".to_string(), "application/json".to_string())];
         let body = Bytes::from("{\"username\": \"admin\"}");
-        let req = RequestModel::new("flow-101", "POST", "http://target.local/api/login", "HTTP/1.1", headers, body);
+        let req = RequestModel::new(
+            "flow-101",
+            "POST",
+            "http://target.local/api/login",
+            "HTTP/1.1",
+            headers,
+            body,
+        );
         let mut flow = FlowRecord::new("flow-101", req);
 
         let res_headers = vec![("Set-Cookie".to_string(), "session=abc".to_string())];
         let res_body = Bytes::from("{\"status\": \"authenticated\"}");
-        flow.response = Some(ResponseModel::new("flow-101", 200, "OK", "HTTP/1.1", res_headers, res_body, 12));
+        flow.response = Some(ResponseModel::new(
+            "flow-101",
+            200,
+            "OK",
+            "HTTP/1.1",
+            res_headers,
+            res_body,
+            12,
+        ));
 
         storage.save_flow(&flow)?;
 

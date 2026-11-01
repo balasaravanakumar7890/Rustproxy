@@ -45,19 +45,14 @@ mod tests {
     #[test]
     fn test_response_model() {
         let headers = vec![
-            ("Content-Type".to_string(), "application/json; charset=utf-8".to_string()),
+            (
+                "Content-Type".to_string(),
+                "application/json; charset=utf-8".to_string(),
+            ),
             ("Server".to_string(), "nginx/1.24".to_string()),
         ];
         let body = Bytes::from("{\"status\": \"ok\"}");
-        let res = ResponseModel::new(
-            "flow-1",
-            200,
-            "OK",
-            "HTTP/1.1",
-            headers,
-            body,
-            45,
-        );
+        let res = ResponseModel::new("flow-1", 200, "OK", "HTTP/1.1", headers, body, 45);
 
         assert!(res.is_success());
         assert!(!res.is_error());

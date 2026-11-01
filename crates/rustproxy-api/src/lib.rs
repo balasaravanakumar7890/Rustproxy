@@ -1,6 +1,5 @@
 pub mod server;
 
-pub use server::start_api_server;
 use anyhow::Result;
 use rustproxy_comparer::{Comparer, DiffResult};
 use rustproxy_core::{FlowRecord, FlowSummary, RequestModel, ResponseModel, SecurityFinding};
@@ -11,6 +10,7 @@ use rustproxy_repeater::{RepeaterEngine, RepeaterTab};
 use rustproxy_sitemap::{SiteMap, SiteMapNode};
 use rustproxy_storage::{FlowFilter, StorageEngine};
 use serde::{Deserialize, Serialize};
+pub use server::start_api_server;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 
@@ -90,7 +90,11 @@ impl ApiService {
         self.interceptor.drop_request(id).await
     }
 
-    pub async fn forward_intercepted_response(&self, id: &str, modified: Option<ResponseModel>) -> bool {
+    pub async fn forward_intercepted_response(
+        &self,
+        id: &str,
+        modified: Option<ResponseModel>,
+    ) -> bool {
         self.interceptor.forward_response(id, modified).await
     }
 
@@ -117,7 +121,11 @@ impl ApiService {
         rep.list_tabs()
     }
 
-    pub async fn create_repeater_tab(&self, name: Option<String>, req: Option<RequestModel>) -> String {
+    pub async fn create_repeater_tab(
+        &self,
+        name: Option<String>,
+        req: Option<RequestModel>,
+    ) -> String {
         let mut rep = self.repeater.write().await;
         rep.create_tab(name, req)
     }
@@ -218,7 +226,9 @@ mod tests {
         api.set_intercept_enabled(true);
         assert!(api.is_intercept_enabled());
 
-        let _tab_id = api.create_repeater_tab(Some("My Test Tab".to_string()), None).await;
+        let _tab_id = api
+            .create_repeater_tab(Some("My Test Tab".to_string()), None)
+            .await;
         let tabs = api.list_repeater_tabs().await;
         assert_eq!(tabs.len(), 1);
         assert_eq!(tabs[0].name, "My Test Tab");

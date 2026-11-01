@@ -3,8 +3,8 @@ use http_body_util::{BodyExt, Full};
 use hyper::header::HeaderName;
 use hyper::header::HeaderValue;
 use hyper_util::rt::TokioIo;
-use rustproxy_core::{RequestModel, ResponseModel};
 use rustls::pki_types::ServerName;
+use rustproxy_core::{RequestModel, ResponseModel};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
@@ -54,7 +54,8 @@ impl HttpClient {
                 _message: &[u8],
                 _cert: &rustls::pki_types::CertificateDer<'_>,
                 _dss: &rustls::DigitallySignedStruct,
-            ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+            ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error>
+            {
                 Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
             }
             fn verify_tls13_signature(
@@ -62,7 +63,8 @@ impl HttpClient {
                 _message: &[u8],
                 _cert: &rustls::pki_types::CertificateDer<'_>,
                 _dss: &rustls::DigitallySignedStruct,
-            ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+            ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error>
+            {
                 Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
             }
             fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
@@ -149,7 +151,11 @@ impl HttpClient {
         };
 
         let status = hyper_res.status().as_u16();
-        let status_text = hyper_res.status().canonical_reason().unwrap_or("").to_string();
+        let status_text = hyper_res
+            .status()
+            .canonical_reason()
+            .unwrap_or("")
+            .to_string();
         let version = format!("{:?}", hyper_res.version());
 
         let mut res_headers = Vec::new();
@@ -175,7 +181,8 @@ impl HttpClient {
 
 impl Default for HttpClient {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| Self::new_insecure().expect("Failed to initialize HttpClient"))
+        Self::new()
+            .unwrap_or_else(|_| Self::new_insecure().expect("Failed to initialize HttpClient"))
     }
 }
 

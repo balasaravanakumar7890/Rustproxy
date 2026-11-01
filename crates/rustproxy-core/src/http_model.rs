@@ -52,9 +52,10 @@ impl RequestModel {
             .and_then(|u| u.host_str())
             .map(|h| h.to_string())
             .or_else(|| {
-                headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("host")).map(|(_, v)| {
-                    v.split(':').next().unwrap_or(v).to_string()
-                })
+                headers
+                    .iter()
+                    .find(|(k, _)| k.eq_ignore_ascii_case("host"))
+                    .map(|(_, v)| v.split(':').next().unwrap_or(v).to_string())
             })
             .unwrap_or_else(|| "localhost".to_string());
 
@@ -65,9 +66,11 @@ impl RequestModel {
                 if scheme == "https" {
                     443
                 } else {
-                    headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("host")).and_then(|(_, v)| {
-                        v.split(':').nth(1).and_then(|p| p.parse::<u16>().ok())
-                    }).unwrap_or(80)
+                    headers
+                        .iter()
+                        .find(|(k, _)| k.eq_ignore_ascii_case("host"))
+                        .and_then(|(_, v)| v.split(':').nth(1).and_then(|p| p.parse::<u16>().ok()))
+                        .unwrap_or(80)
                 }
             });
 
@@ -85,9 +88,7 @@ impl RequestModel {
         let query = parsed_url
             .as_ref()
             .and_then(|u| u.query().map(|q| q.to_string()))
-            .or_else(|| {
-                uri_str.split_once('?').map(|(_, q)| q.to_string())
-            });
+            .or_else(|| uri_str.split_once('?').map(|(_, q)| q.to_string()));
 
         let body_length = body.len();
 
@@ -115,7 +116,11 @@ impl RequestModel {
     }
 
     pub fn set_header(&mut self, name: &str, value: &str) {
-        if let Some(pos) = self.headers.iter().position(|(k, _)| k.eq_ignore_ascii_case(name)) {
+        if let Some(pos) = self
+            .headers
+            .iter()
+            .position(|(k, _)| k.eq_ignore_ascii_case(name))
+        {
             self.headers[pos] = (name.to_string(), value.to_string());
         } else {
             self.headers.push((name.to_string(), value.to_string()));
@@ -141,7 +146,9 @@ impl RequestModel {
         } else {
             self.path.clone()
         };
-        wire.extend_from_slice(format!("{} {} {}\r\n", self.method, target_path, self.version).as_bytes());
+        wire.extend_from_slice(
+            format!("{} {} {}\r\n", self.method, target_path, self.version).as_bytes(),
+        );
         for (k, v) in &self.headers {
             wire.extend_from_slice(format!("{}: {}\r\n", k, v).as_bytes());
         }
@@ -207,7 +214,11 @@ impl ResponseModel {
     }
 
     pub fn set_header(&mut self, name: &str, value: &str) {
-        if let Some(pos) = self.headers.iter().position(|(k, _)| k.eq_ignore_ascii_case(name)) {
+        if let Some(pos) = self
+            .headers
+            .iter()
+            .position(|(k, _)| k.eq_ignore_ascii_case(name))
+        {
             self.headers[pos] = (name.to_string(), value.to_string());
         } else {
             self.headers.push((name.to_string(), value.to_string()));
@@ -232,7 +243,9 @@ impl ResponseModel {
 
     pub fn to_raw_wire(&self) -> Vec<u8> {
         let mut wire = Vec::new();
-        wire.extend_from_slice(format!("{} {} {}\r\n", self.version, self.status, self.status_text).as_bytes());
+        wire.extend_from_slice(
+            format!("{} {} {}\r\n", self.version, self.status, self.status_text).as_bytes(),
+        );
         for (k, v) in &self.headers {
             wire.extend_from_slice(format!("{}: {}\r\n", k, v).as_bytes());
         }
@@ -254,5 +267,7 @@ where
     D: serde::Deserializer<'de>,
 {
     let opt: Option<String> = serde::Deserialize::deserialize(deserializer)?;
-    Ok(opt.map(|s| Bytes::from(s.into_bytes())).unwrap_or_else(Bytes::new))
+    Ok(opt
+        .map(|s| Bytes::from(s.into_bytes()))
+        .unwrap_or_else(Bytes::new))
 }

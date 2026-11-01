@@ -104,8 +104,10 @@ impl InterceptRule {
 pub struct InterceptManager {
     is_intercept_on: AtomicBool,
     rules: RwLock<Vec<InterceptRule>>,
-    pending_requests: Arc<RwLock<HashMap<String, (RequestModel, oneshot::Sender<InterceptDecision>)>>>,
-    pending_responses: Arc<RwLock<HashMap<String, (ResponseModel, oneshot::Sender<InterceptDecision>)>>>,
+    pending_requests:
+        Arc<RwLock<HashMap<String, (RequestModel, oneshot::Sender<InterceptDecision>)>>>,
+    pending_responses:
+        Arc<RwLock<HashMap<String, (ResponseModel, oneshot::Sender<InterceptDecision>)>>>,
 }
 
 impl InterceptManager {
@@ -254,7 +256,14 @@ mod tests {
         let manager = InterceptManager::new();
         manager.set_enabled(true);
 
-        let req = RequestModel::new("flow-1", "GET", "http://example.com/test", "HTTP/1.1", vec![], Bytes::new());
+        let req = RequestModel::new(
+            "flow-1",
+            "GET",
+            "http://example.com/test",
+            "HTTP/1.1",
+            vec![],
+            Bytes::new(),
+        );
         assert!(manager.should_intercept_request(&req, true).await);
 
         let rx = manager.queue_request(req.clone()).await;

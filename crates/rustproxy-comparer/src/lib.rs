@@ -38,7 +38,9 @@ impl Comparer {
             for op in group {
                 for change in diff.iter_changes(op) {
                     let (tag, old_l, new_l) = match change.tag() {
-                        ChangeTag::Equal => (DiffTag::Equal, change.old_index(), change.new_index()),
+                        ChangeTag::Equal => {
+                            (DiffTag::Equal, change.old_index(), change.new_index())
+                        }
                         ChangeTag::Delete => {
                             deletions += 1;
                             (DiffTag::Delete, change.old_index(), None)
@@ -83,7 +85,8 @@ mod tests {
     #[test]
     fn test_comparer_diff() {
         let text1 = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"auth\": true}";
-        let text2 = "HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{\"auth\": false}";
+        let text2 =
+            "HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{\"auth\": false}";
 
         let result = Comparer::diff_text(text1, text2);
         assert!(result.additions > 0);

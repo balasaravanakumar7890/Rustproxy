@@ -109,8 +109,14 @@ async fn test_end_to_end_proxy_pipeline() -> Result<()> {
     // 6. Assert SiteMap registered the endpoint
     let hosts = sitemap.read().await.get_hosts();
     assert_eq!(hosts.len(), 1);
-    let api_seg = hosts[0].children.get("api").expect("Missing /api segment in sitemap");
-    let test_seg = api_seg.children.get("test").expect("Missing /test segment in sitemap");
+    let api_seg = hosts[0]
+        .children
+        .get("api")
+        .expect("Missing /api segment in sitemap");
+    let test_seg = api_seg
+        .children
+        .get("test")
+        .expect("Missing /test segment in sitemap");
     assert!(test_seg.is_endpoint);
 
     // 7. Assert Passive Scanner detected findings on the response

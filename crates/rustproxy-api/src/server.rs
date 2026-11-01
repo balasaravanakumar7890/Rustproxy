@@ -83,8 +83,14 @@ async fn handle_api_request(
 
         let mut builder = Response::builder()
             .status(StatusCode::NO_CONTENT)
-            .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-            .header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+            .header(
+                "Access-Control-Allow-Methods",
+                "GET, POST, PUT, DELETE, OPTIONS",
+            )
+            .header(
+                "Access-Control-Allow-Headers",
+                "Content-Type, Authorization",
+            );
 
         if let Some(ref orig) = allowed_origin {
             builder = builder
@@ -139,7 +145,9 @@ async fn handle_api_request(
             }
             match api.list_flows(&filter) {
                 Ok(flows) => json_response(StatusCode::OK, &flows, orig_ref),
-                Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref),
+                Err(e) => {
+                    error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref)
+                }
             }
         }
 
@@ -158,7 +166,9 @@ async fn handle_api_request(
                     json_response(StatusCode::OK, &val, orig_ref)
                 }
                 Ok(None) => error_response(StatusCode::NOT_FOUND, "Flow not found", orig_ref),
-                Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref),
+                Err(e) => {
+                    error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string(), orig_ref)
+                }
             }
         }
 
@@ -233,10 +243,16 @@ async fn handle_api_request(
                 modified: Option<ResponseModel>,
             }
             if let Ok(payload) = serde_json::from_slice::<ForwardResponsePayload>(&body_bytes) {
-                let success = api.forward_intercepted_response(&payload.id, payload.modified).await;
+                let success = api
+                    .forward_intercepted_response(&payload.id, payload.modified)
+                    .await;
                 json_response(StatusCode::OK, &json!({ "success": success }), orig_ref)
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid forward response payload", orig_ref)
+                error_response(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid forward response payload",
+                    orig_ref,
+                )
             }
         }
 
@@ -250,7 +266,11 @@ async fn handle_api_request(
                 let success = api.drop_intercepted_response(&payload.id).await;
                 json_response(StatusCode::OK, &json!({ "success": success }), orig_ref)
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid drop response payload", orig_ref)
+                error_response(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid drop response payload",
+                    orig_ref,
+                )
             }
         }
 
@@ -267,10 +287,11 @@ async fn handle_api_request(
                 name: Option<String>,
                 request: Option<RequestModel>,
             }
-            let payload: CreateTabPayload = serde_json::from_slice(&body_bytes).unwrap_or(CreateTabPayload {
-                name: None,
-                request: None,
-            });
+            let payload: CreateTabPayload =
+                serde_json::from_slice(&body_bytes).unwrap_or(CreateTabPayload {
+                    name: None,
+                    request: None,
+                });
             let tab_id = api.create_repeater_tab(payload.name, payload.request).await;
             json_response(StatusCode::CREATED, &json!({ "tab_id": tab_id }), orig_ref)
         }
@@ -286,7 +307,11 @@ async fn handle_api_request(
                 let success = api.update_repeater_tab(tab_id, payload.request).await;
                 json_response(StatusCode::OK, &json!({ "success": success }), orig_ref)
             } else {
-                error_response(StatusCode::BAD_REQUEST, "Invalid update tab payload", orig_ref)
+                error_response(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid update tab payload",
+                    orig_ref,
+                )
             }
         }
 
@@ -295,7 +320,9 @@ async fn handle_api_request(
             let prefix = "/api/repeater/tabs/";
             let tab_id = &p[prefix.len()..p.len() - "/duplicate".len()];
             match api.duplicate_repeater_tab(tab_id).await {
-                Some(new_id) => json_response(StatusCode::OK, &json!({ "tab_id": new_id }), orig_ref),
+                Some(new_id) => {
+                    json_response(StatusCode::OK, &json!({ "tab_id": new_id }), orig_ref)
+                }
                 None => error_response(StatusCode::NOT_FOUND, "Tab not found", orig_ref),
             }
         }
@@ -332,7 +359,11 @@ async fn handle_api_request(
                         orig_ref,
                     )
                 }
-                Err(e) => error_response(StatusCode::BAD_GATEWAY, &format!("Request failed: {:?}", e), orig_ref),
+                Err(e) => error_response(
+                    StatusCode::BAD_GATEWAY,
+                    &format!("Request failed: {:?}", e),
+                    orig_ref,
+                ),
             }
         }
 
@@ -357,7 +388,9 @@ async fn handle_api_request(
             }
             if let Ok(p) = serde_json::from_slice::<CodecPayload>(&body_bytes) {
                 match api.encode(&p.text, &p.format) {
-                    Ok(result) => json_response(StatusCode::OK, &json!({ "result": result }), orig_ref),
+                    Ok(result) => {
+                        json_response(StatusCode::OK, &json!({ "result": result }), orig_ref)
+                    }
                     Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string(), orig_ref),
                 }
             } else {
@@ -374,7 +407,9 @@ async fn handle_api_request(
             }
             if let Ok(p) = serde_json::from_slice::<CodecPayload>(&body_bytes) {
                 match api.decode(&p.text, &p.format) {
-                    Ok(result) => json_response(StatusCode::OK, &json!({ "result": result }), orig_ref),
+                    Ok(result) => {
+                        json_response(StatusCode::OK, &json!({ "result": result }), orig_ref)
+                    }
                     Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string(), orig_ref),
                 }
             } else {
@@ -474,11 +509,7 @@ fn json_response<T: serde::Serialize>(
     builder.body(Full::new(Bytes::from(json_bytes))).unwrap()
 }
 
-fn error_response(
-    status: StatusCode,
-    msg: &str,
-    origin: Option<&str>,
-) -> Response<Full<Bytes>> {
+fn error_response(status: StatusCode, msg: &str, origin: Option<&str>) -> Response<Full<Bytes>> {
     let err_json = json!({ "error": msg });
     let bytes = serde_json::to_vec(&err_json).unwrap_or_default();
     let mut builder = Response::builder()

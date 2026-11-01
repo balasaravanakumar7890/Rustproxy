@@ -80,7 +80,10 @@ impl PassiveRule for MissingCspRule {
                         &flow.request.uri,
                     );
                     finding.cwe_id = Some(1021);
-                    finding.remediation = Some("Configure the web server to send a robust Content-Security-Policy header.".to_string());
+                    finding.remediation = Some(
+                        "Configure the web server to send a robust Content-Security-Policy header."
+                            .to_string(),
+                    );
                     return vec![finding];
                 }
             }
@@ -153,7 +156,8 @@ impl PassiveRule for MissingXContentTypeOptionsRule {
                 &flow.request.uri,
             );
             finding.cwe_id = Some(16);
-            finding.remediation = Some("Ensure all responses include 'X-Content-Type-Options: nosniff'.".to_string());
+            finding.remediation =
+                Some("Ensure all responses include 'X-Content-Type-Options: nosniff'.".to_string());
             return vec![finding];
         }
         vec![]
@@ -174,10 +178,15 @@ impl PassiveRule for MissingXFrameOptionsRule {
 
     fn check(&self, flow: &FlowRecord) -> Vec<SecurityFinding> {
         if let Some(res) = &flow.response {
-            let is_html = res.mime_type.as_deref().map(|m| m.contains("text/html")).unwrap_or(false);
+            let is_html = res
+                .mime_type
+                .as_deref()
+                .map(|m| m.contains("text/html"))
+                .unwrap_or(false);
             if is_html {
                 let has_xfo = res.get_header("x-frame-options").is_some();
-                let has_csp_fa = res.get_header("content-security-policy")
+                let has_csp_fa = res
+                    .get_header("content-security-policy")
                     .map(|csp| csp.contains("frame-ancestors"))
                     .unwrap_or(false);
 
@@ -192,7 +201,10 @@ impl PassiveRule for MissingXFrameOptionsRule {
                         &flow.request.uri,
                     );
                     finding.cwe_id = Some(1021);
-                    finding.remediation = Some("Set 'X-Frame-Options: DENY' or use CSP 'frame-ancestors 'none';'.".to_string());
+                    finding.remediation = Some(
+                        "Set 'X-Frame-Options: DENY' or use CSP 'frame-ancestors 'none';'."
+                            .to_string(),
+                    );
                     return vec![finding];
                 }
             }
@@ -221,12 +233,17 @@ impl PassiveRule for InsecureCookieRule {
                     let lower = val.to_lowercase();
                     let cookie_name = val.split('=').next().unwrap_or("unknown").trim();
 
-                    if !lower.contains("secure") && flow.request.scheme.eq_ignore_ascii_case("https") {
+                    if !lower.contains("secure")
+                        && flow.request.scheme.eq_ignore_ascii_case("https")
+                    {
                         let mut f = SecurityFinding::new(
                             Uuid::new_v4().to_string(),
                             &flow.id,
                             format!("Cookie '{}' Missing 'Secure' Flag", cookie_name),
-                            format!("The cookie '{}' was set over HTTPS without the Secure flag.", cookie_name),
+                            format!(
+                                "The cookie '{}' was set over HTTPS without the Secure flag.",
+                                cookie_name
+                            ),
                             FindingSeverity::Medium,
                             FindingConfidence::Certain,
                             &flow.request.uri,
@@ -241,7 +258,10 @@ impl PassiveRule for InsecureCookieRule {
                             Uuid::new_v4().to_string(),
                             &flow.id,
                             format!("Cookie '{}' Missing 'HttpOnly' Flag", cookie_name),
-                            format!("The cookie '{}' is accessible via client-side JavaScript.", cookie_name),
+                            format!(
+                                "The cookie '{}' is accessible via client-side JavaScript.",
+                                cookie_name
+                            ),
                             FindingSeverity::Low,
                             FindingConfidence::Certain,
                             &flow.request.uri,
@@ -256,7 +276,10 @@ impl PassiveRule for InsecureCookieRule {
                             Uuid::new_v4().to_string(),
                             &flow.id,
                             format!("Cookie '{}' Missing 'SameSite' Attribute", cookie_name),
-                            format!("The cookie '{}' does not specify SameSite=Lax or SameSite=Strict.", cookie_name),
+                            format!(
+                                "The cookie '{}' does not specify SameSite=Lax or SameSite=Strict.",
+                                cookie_name
+                            ),
                             FindingSeverity::Low,
                             FindingConfidence::Certain,
                             &flow.request.uri,
@@ -293,7 +316,10 @@ impl PassiveRule for ServerInformationDisclosureRule {
                         Uuid::new_v4().to_string(),
                         &flow.id,
                         "Server Header Version Disclosure",
-                        format!("The Server header discloses software version information: '{}'", server),
+                        format!(
+                            "The Server header discloses software version information: '{}'",
+                            server
+                        ),
                         FindingSeverity::Info,
                         FindingConfidence::Certain,
                         &flow.request.uri,
@@ -308,7 +334,10 @@ impl PassiveRule for ServerInformationDisclosureRule {
                     Uuid::new_v4().to_string(),
                     &flow.id,
                     "X-Powered-By Header Information Disclosure",
-                    format!("The X-Powered-By header exposes backend technology details: '{}'", xpb),
+                    format!(
+                        "The X-Powered-By header exposes backend technology details: '{}'",
+                        xpb
+                    ),
                     FindingSeverity::Info,
                     FindingConfidence::Certain,
                     &flow.request.uri,
@@ -385,15 +414,33 @@ mod tests {
     fn test_passive_scanner_detects_missing_headers_and_cookie_issues() {
         let engine = ScannerEngine::new();
 
-        let req = RequestModel::new("f-1", "GET", "https://example.com/app", "HTTP/1.1", vec![], Bytes::new());
+        let req = RequestModel::new(
+            "f-1",
+            "GET",
+            "https://example.com/app",
+            "HTTP/1.1",
+            vec![],
+            Bytes::new(),
+        );
         let mut flow = FlowRecord::new("f-1", req);
 
         let res_headers = vec![
             ("Content-Type".to_string(), "text/html".to_string()),
             ("Server".to_string(), "Apache/2.4.51 (Ubuntu)".to_string()),
-            ("Set-Cookie".to_string(), "sessionid=xyz; Path=/".to_string()),
+            (
+                "Set-Cookie".to_string(),
+                "sessionid=xyz; Path=/".to_string(),
+            ),
         ];
-        flow.response = Some(ResponseModel::new("f-1", 200, "OK", "HTTP/1.1", res_headers, Bytes::from("<html><body>Welcome</body></html>"), 20));
+        flow.response = Some(ResponseModel::new(
+            "f-1",
+            200,
+            "OK",
+            "HTTP/1.1",
+            res_headers,
+            Bytes::from("<html><body>Welcome</body></html>"),
+            20,
+        ));
 
         let findings = engine.scan_flow(&flow);
         assert!(!findings.is_empty());
@@ -402,8 +449,13 @@ mod tests {
         assert!(titles.contains(&"Missing Content-Security-Policy Header"));
         assert!(titles.contains(&"Missing Strict-Transport-Security (HSTS) Header"));
         assert!(titles.contains(&"Missing X-Content-Type-Options Header"));
-        assert!(titles.contains(&"Missing Anti-Clickjacking Frame Protections") || titles.contains(&"Missing Clickjacking Protection"));
-        assert!(titles.iter().any(|t| t.contains("Secure") || t.contains("HttpOnly")));
+        assert!(
+            titles.contains(&"Missing Anti-Clickjacking Frame Protections")
+                || titles.contains(&"Missing Clickjacking Protection")
+        );
+        assert!(titles
+            .iter()
+            .any(|t| t.contains("Secure") || t.contains("HttpOnly")));
         assert!(titles.contains(&"Server Header Version Disclosure"));
     }
 }

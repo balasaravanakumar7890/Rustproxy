@@ -180,7 +180,9 @@ impl ProxyServer {
 
             // Reply with 200 Connection Established
             stream
-                .write_all(b"HTTP/1.1 200 Connection Established\r\nProxy-Agent: RustProxy/0.1.0\r\n\r\n")
+                .write_all(
+                    b"HTTP/1.1 200 Connection Established\r\nProxy-Agent: RustProxy/0.1.0\r\n\r\n",
+                )
                 .await?;
 
             // Upgrade to TLS stream
@@ -304,14 +306,7 @@ impl ProxyServer {
             Err(_) => Bytes::new(),
         };
 
-        let mut req_model = RequestModel::new(
-            &flow_id,
-            method,
-            uri,
-            version,
-            headers,
-            body_bytes,
-        );
+        let mut req_model = RequestModel::new(&flow_id, method, uri, version, headers, body_bytes);
 
         if !default_host.is_empty() {
             req_model.host = default_host.to_string();
@@ -322,11 +317,19 @@ impl ProxyServer {
         // Scope check
         let in_scope = {
             let mut sm = sitemap.write().await;
-            sm.is_in_scope(&req_model.scheme, &req_model.host, req_model.port, &req_model.path)
+            sm.is_in_scope(
+                &req_model.scheme,
+                &req_model.host,
+                req_model.port,
+                &req_model.path,
+            )
         };
 
         // Intercept check
-        let final_req = if interceptor.should_intercept_request(&req_model, in_scope).await {
+        let final_req = if interceptor
+            .should_intercept_request(&req_model, in_scope)
+            .await
+        {
             let _ = event_tx.send(ProxyEvent::RequestIntercepted(req_model.clone()));
             let rx = interceptor.queue_request(req_model.clone()).await;
             match rx.await {
@@ -334,7 +337,9 @@ impl ProxyServer {
                 Ok(InterceptDecision::ForwardOriginal) => req_model,
                 _ => {
                     // Drop request
-                    let mut res = hyper::Response::new(Full::new(Bytes::from("Request Dropped by RustProxy")));
+                    let mut res = hyper::Response::new(Full::new(Bytes::from(
+                        "Request Dropped by RustProxy",
+                    )));
                     *res.status_mut() = hyper::StatusCode::BAD_GATEWAY;
                     return Ok(res);
                 }
@@ -353,14 +358,19 @@ impl ProxyServer {
         match upstream_res {
             Ok(response_model) => {
                 // Response Intercept Check
-                let final_res = if interceptor.should_intercept_response(&response_model, in_scope).await {
+                let final_res = if interceptor
+                    .should_intercept_response(&response_model, in_scope)
+                    .await
+                {
                     let _ = event_tx.send(ProxyEvent::ResponseIntercepted(response_model.clone()));
                     let rx = interceptor.queue_response(response_model.clone()).await;
                     match rx.await {
                         Ok(InterceptDecision::ForwardModifiedResponse(modified)) => modified,
                         Ok(InterceptDecision::ForwardOriginal) => response_model,
                         _ => {
-                            let mut drop_res = hyper::Response::new(Full::new(Bytes::from("Response Dropped by RustProxy")));
+                            let mut drop_res = hyper::Response::new(Full::new(Bytes::from(
+                                "Response Dropped by RustProxy",
+                            )));
                             *drop_res.status_mut() = hyper::StatusCode::BAD_GATEWAY;
                             return Ok(drop_res);
                         }
@@ -389,11 +399,12 @@ impl ProxyServer {
                 let _ = event_tx.send(ProxyEvent::FlowRecorded(flow_record.summary()));
 
                 // Build client response
-                let mut builder = hyper::Response::builder()
-                    .status(final_res.status);
+                let mut builder = hyper::Response::builder().status(final_res.status);
 
                 for (k, v) in &final_res.headers {
-                    if let (Ok(hname), Ok(hval)) = (HeaderName::from_str(k), HeaderValue::from_str(v)) {
+                    if let (Ok(hname), Ok(hval)) =
+                        (HeaderName::from_str(k), HeaderValue::from_str(v))
+                    {
                         // Skip hop-by-hop headers
                         if !k.eq_ignore_ascii_case("transfer-encoding") {
                             builder = builder.header(hname, hval);

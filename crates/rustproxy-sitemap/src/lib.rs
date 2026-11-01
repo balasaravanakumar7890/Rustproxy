@@ -55,10 +55,14 @@ impl SiteMap {
     }
 
     pub fn add_flow(&mut self, flow: &FlowRecord) {
-        let host_key = format!("{}://{}:{}", flow.request.scheme, flow.request.host, flow.request.port);
-        let host_node = self.hosts.entry(host_key.clone()).or_insert_with(|| {
-            SiteMapNode::new(host_key.clone(), host_key.clone(), "/")
-        });
+        let host_key = format!(
+            "{}://{}:{}",
+            flow.request.scheme, flow.request.host, flow.request.port
+        );
+        let host_node = self
+            .hosts
+            .entry(host_key.clone())
+            .or_insert_with(|| SiteMapNode::new(host_key.clone(), host_key.clone(), "/"));
 
         // Split path into segments
         let segments: Vec<&str> = flow
@@ -76,10 +80,9 @@ impl SiteMap {
             accumulated_path.push_str(seg);
 
             let is_last = i == segments.len() - 1;
-            let next_node = current
-                .children
-                .entry(seg.to_string())
-                .or_insert_with(|| SiteMapNode::new(accumulated_path.clone(), *seg, accumulated_path.clone()));
+            let next_node = current.children.entry(seg.to_string()).or_insert_with(|| {
+                SiteMapNode::new(accumulated_path.clone(), *seg, accumulated_path.clone())
+            });
 
             if is_last {
                 next_node.is_endpoint = true;
@@ -121,13 +124,43 @@ mod tests {
     fn test_sitemap_hierarchy_aggregation() {
         let mut sitemap = SiteMap::new();
 
-        let req1 = RequestModel::new("f-1", "GET", "https://api.test.local/v1/users", "HTTP/1.1", vec![], Bytes::new());
+        let req1 = RequestModel::new(
+            "f-1",
+            "GET",
+            "https://api.test.local/v1/users",
+            "HTTP/1.1",
+            vec![],
+            Bytes::new(),
+        );
         let mut flow1 = FlowRecord::new("f-1", req1);
-        flow1.response = Some(ResponseModel::new("f-1", 200, "OK", "HTTP/1.1", vec![], Bytes::new(), 10));
+        flow1.response = Some(ResponseModel::new(
+            "f-1",
+            200,
+            "OK",
+            "HTTP/1.1",
+            vec![],
+            Bytes::new(),
+            10,
+        ));
 
-        let req2 = RequestModel::new("f-2", "POST", "https://api.test.local/v1/users", "HTTP/1.1", vec![], Bytes::new());
+        let req2 = RequestModel::new(
+            "f-2",
+            "POST",
+            "https://api.test.local/v1/users",
+            "HTTP/1.1",
+            vec![],
+            Bytes::new(),
+        );
         let mut flow2 = FlowRecord::new("f-2", req2);
-        flow2.response = Some(ResponseModel::new("f-2", 201, "Created", "HTTP/1.1", vec![], Bytes::new(), 15));
+        flow2.response = Some(ResponseModel::new(
+            "f-2",
+            201,
+            "Created",
+            "HTTP/1.1",
+            vec![],
+            Bytes::new(),
+            15,
+        ));
 
         sitemap.add_flow(&flow1);
         sitemap.add_flow(&flow2);

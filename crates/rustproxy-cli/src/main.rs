@@ -23,16 +23,18 @@ async fn main() -> Result<()> {
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
 
-    println!(r#"
+    println!(
+        r#"
   ____           _   ____                    
  |  _ \ _   _ ___| |_|  _ \ _ __ _____  _   _ 
  | |_) | | | / __| __| |_) | '__/ _ \ \/ / | | |
  |  _ <| |_| \__ \ |_|  __/| | | (_) >  <| |_| |
  |_| \_\\__,_|___/\__|_|   |_|  \___/_/\_\\__, |
                                           |___/ 
-  RustProxy v0.1.0 - Defensive Traffic Analysis Platform
+  RustProxy v1.0.0 - Defensive Traffic Analysis Platform
   Built with Rust, Tokio, Rustls, and Hyper
-"#);
+"#
+    );
 
     let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let ca_dir = PathBuf::from(home_dir).join(".rustproxy");
@@ -52,7 +54,10 @@ async fn main() -> Result<()> {
         let _ = fs::set_permissions(&ca_key_path, fs::Permissions::from_mode(0o600));
     }
 
-    println!("  [+] Generated Root CA Certificate: {}", ca_cert_path.display());
+    println!(
+        "  [+] Generated Root CA Certificate: {}",
+        ca_cert_path.display()
+    );
     println!("  [!] Install this certificate in your browser/system to inspect HTTPS traffic without warnings.");
     println!();
 
@@ -106,8 +111,14 @@ async fn main() -> Result<()> {
         while let Ok(event) = event_rx.recv().await {
             match event {
                 ProxyEvent::FlowRecorded(flow) => {
-                    let status = flow.status.map(|s| s.to_string()).unwrap_or_else(|| "ERR".to_string());
-                    let duration = flow.duration_ms.map(|d| format!("{}ms", d)).unwrap_or_else(|| "-".to_string());
+                    let status = flow
+                        .status
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "ERR".to_string());
+                    let duration = flow
+                        .duration_ms
+                        .map(|d| format!("{}ms", d))
+                        .unwrap_or_else(|| "-".to_string());
                     println!(
                         "  [FLOW] {:<6} {:<4} {:<30} {:<30} [{}] ({} bytes)",
                         flow.method,
@@ -145,7 +156,10 @@ async fn main() -> Result<()> {
 
     println!("  [*] Proxy listening on http://{}", bind_addr);
     println!("  [*] Desktop/Web API listening on http://{}", api_addr);
-    println!("  [*] Configure client proxy settings to http://{}", bind_addr);
+    println!(
+        "  [*] Configure client proxy settings to http://{}",
+        bind_addr
+    );
     println!("  [*] Press Ctrl+C to stop.");
     println!();
 

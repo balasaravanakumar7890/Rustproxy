@@ -10,7 +10,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::RwLock;
 
-async fn spawn_concurrency_proxy() -> Result<(SocketAddr, Arc<StorageEngine>, Arc<InterceptManager>)> {
+async fn spawn_concurrency_proxy() -> Result<(SocketAddr, Arc<StorageEngine>, Arc<InterceptManager>)>
+{
     let port_listener = TcpListener::bind("127.0.0.1:0").await?;
     let proxy_addr: SocketAddr = port_listener.local_addr()?;
     drop(port_listener);
@@ -94,7 +95,11 @@ async fn test_high_concurrency_throughput() -> Result<()> {
             let mut res_bytes = Vec::new();
             client.read_to_end(&mut res_bytes).await?;
             let res_str = String::from_utf8_lossy(&res_bytes);
-            assert!(res_str.contains("HTTP/1.1 200 OK"), "Failed on client {}", client_id);
+            assert!(
+                res_str.contains("HTTP/1.1 200 OK"),
+                "Failed on client {}",
+                client_id
+            );
             assert!(res_str.contains("concurrent_ok"));
             Ok::<(), anyhow::Error>(())
         });

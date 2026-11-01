@@ -36,7 +36,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h1 className="text-xl font-bold text-white flex items-center space-x-2">
             <span>Defensive Security Platform</span>
             <span className="px-2 py-0.5 rounded text-xs bg-brand-primary/20 text-brand-primary font-mono border border-brand-primary/30">
-              v0.1.0-Rust
+              v1.0.0-Rust
             </span>
           </h1>
           <p className="text-sm text-dark-muted mt-1">

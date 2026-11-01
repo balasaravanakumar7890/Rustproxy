@@ -1,8 +1,8 @@
 use anyhow::Result;
 use dashmap::DashMap;
 use rcgen::{
-    BasicConstraints, CertificateParams, DistinguishedName, DnType, IsCa, KeyPair,
-    KeyUsagePurpose, SanType,
+    BasicConstraints, CertificateParams, DistinguishedName, DnType, IsCa, KeyPair, KeyUsagePurpose,
+    SanType,
 };
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use std::sync::Arc;
@@ -76,7 +76,9 @@ impl CertificateAuthority {
         if let Ok(ip) = host.parse::<std::net::IpAddr>() {
             params.subject_alt_names.push(SanType::IpAddress(ip));
         } else {
-            params.subject_alt_names.push(SanType::DnsName(host.try_into()?));
+            params
+                .subject_alt_names
+                .push(SanType::DnsName(host.try_into()?));
             if host.eq_ignore_ascii_case("localhost") {
                 if let Ok(ip4) = "127.0.0.1".parse() {
                     params.subject_alt_names.push(SanType::IpAddress(ip4));
@@ -119,7 +121,10 @@ impl DynamicCertResolver {
 }
 
 impl rustls::server::ResolvesServerCert for DynamicCertResolver {
-    fn resolve(&self, client_hello: rustls::server::ClientHello) -> Option<Arc<rustls::sign::CertifiedKey>> {
+    fn resolve(
+        &self,
+        client_hello: rustls::server::ClientHello,
+    ) -> Option<Arc<rustls::sign::CertifiedKey>> {
         let host = client_hello.server_name().unwrap_or("localhost");
         match self.ca.get_or_create_leaf_cert(host) {
             Ok(key) => Some(key),
@@ -131,7 +136,9 @@ impl rustls::server::ResolvesServerCert for DynamicCertResolver {
     }
 }
 
-pub fn create_mitm_server_config(ca: Arc<CertificateAuthority>) -> Result<Arc<rustls::ServerConfig>> {
+pub fn create_mitm_server_config(
+    ca: Arc<CertificateAuthority>,
+) -> Result<Arc<rustls::ServerConfig>> {
     let resolver = Arc::new(DynamicCertResolver::new(ca));
     let mut config = rustls::ServerConfig::builder()
         .with_no_client_auth()
@@ -152,11 +159,15 @@ mod tests {
         assert!(!ca.ca_cert_pem.is_empty());
         assert!(!ca.ca_key_pem.is_empty());
 
-        let cert_key = ca.get_or_create_leaf_cert("test.local").expect("Leaf synthesis failed");
+        let cert_key = ca
+            .get_or_create_leaf_cert("test.local")
+            .expect("Leaf synthesis failed");
         assert_eq!(cert_key.cert.len(), 2); // Leaf + CA cert chain
 
         // Check caching
-        let cert_key_2 = ca.get_or_create_leaf_cert("test.local").expect("Leaf fetch failed");
+        let cert_key_2 = ca
+            .get_or_create_leaf_cert("test.local")
+            .expect("Leaf fetch failed");
         assert!(Arc::ptr_eq(&cert_key, &cert_key_2));
     }
 }

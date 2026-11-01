@@ -992,7 +992,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-api"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1019,7 +1019,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "rustls",
@@ -1042,7 +1042,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-comparer"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "hex",
  "rustproxy-core",
@@ -1053,7 +1053,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bytes",
  "chrono",
@@ -1067,7 +1067,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-decoder"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -1083,7 +1083,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-http"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1105,7 +1105,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-intercept"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1118,7 +1118,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-proxy"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1145,7 +1145,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-repeater"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1161,7 +1161,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-scanner"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bytes",
  "regex",
@@ -1174,7 +1174,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-sitemap"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bytes",
  "dashmap",
@@ -1186,7 +1186,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-storage"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1202,7 +1202,7 @@ dependencies = [
 
 [[package]]
 name = "rustproxy-tls"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "dashmap",

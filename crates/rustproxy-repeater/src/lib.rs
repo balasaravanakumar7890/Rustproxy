@@ -132,13 +132,18 @@ impl RepeaterEngine {
 
             match res {
                 Ok(response) => {
-                    if follow_redirects && response.is_redirect() && redirect_count < MAX_REDIRECTS {
+                    if follow_redirects && response.is_redirect() && redirect_count < MAX_REDIRECTS
+                    {
                         if let Some(loc) = response.get_header("location") {
-                            let next_uri = if loc.starts_with("http://") || loc.starts_with("https://") {
-                                loc.to_string()
-                            } else {
-                                format!("{}://{}:{}{}", current_req.scheme, current_req.host, current_req.port, loc)
-                            };
+                            let next_uri =
+                                if loc.starts_with("http://") || loc.starts_with("https://") {
+                                    loc.to_string()
+                                } else {
+                                    format!(
+                                        "{}://{}:{}{}",
+                                        current_req.scheme, current_req.host, current_req.port, loc
+                                    )
+                                };
 
                             let next_req = RequestModel::new(
                                 &current_req.id,
@@ -156,7 +161,8 @@ impl RepeaterEngine {
 
                     if let Some(tab) = self.tabs.get_mut(tab_id) {
                         tab.is_in_flight = false;
-                        tab.history.push((tab.request.clone(), Some(response.clone())));
+                        tab.history
+                            .push((tab.request.clone(), Some(response.clone())));
                         tab.response = Some(response.clone());
                     }
 
